@@ -1,13 +1,22 @@
-// עטיפה לעמודים עם רקע לבן וצל עדין
-import type { ReactNode } from 'react'
+// PageCard.tsx
+import type { ReactNode } from 'react';
 
-export default function PageCard({ title, children }:{
-  title?: string; children: ReactNode
-}) {
+interface PageCardProps {
+  title?: string;
+  children: ReactNode;
+}
+
+export default function PageCard({ title, children }: PageCardProps) {
   return (
-    <section className="bg-white rounded-2xl shadow-[0_6px_18px_rgba(0,0,0,.08)] p-6">
-      {title && <h1 className="text-xl font-semibold text-purple-700 mb-4">{title}</h1>}
-      {children}
+    <section className="bg-brand-900 rounded-2xl shadow-[0_6px_18px_rgba(0,0,0,.08)] p-6">
+      {title && (
+        <h1 className="text-xl font-semibold text-white mb-4">
+          {title}
+        </h1>
+      )}
+      <div className="text-white">
+        {children}
+      </div>
     </section>
-  )
+  );
 }

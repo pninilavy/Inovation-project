@@ -35,7 +35,7 @@ export default function SidebarToolbar() {
       : "לא שובצה קבוצה";
 
   return (
-    <aside className="fixed top-6 bottom-6 right-6 w-16 md:w-20 lg:w-24 rounded-2xl bg-brand-900 text-white flex flex-col items-center p-3 gap-4 z-40 shadow-card">
+    <aside className="fixed top-0 bottom-0 right-0 w-16 md:w-20 lg:w-24 rounded-2xl bg-brand-900 text-white flex flex-col items-center p-3 gap-4 z-40 shadow-card">
       {/* כפתור חזרה עליון */}
       <div className="w-full flex justify-center">
         <Link

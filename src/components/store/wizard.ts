@@ -1,70 +1,71 @@
 // שמירת כל מצב האשף ב-Zustand + פרסיסט ללוקאל סטורג’
 // הערות בעברית: מסבירות כל פעולה ומה היא עושה
 
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 // --------- טיפוסים ----------
 
 // שלב 1
 export type Step1Data = {
-  title: string
-  problem: string
-  audience: string
-  tags: string[]
-}
+  title: string;
+  problem: string;
+  audience: string;
+  tags: string[];
+};
 
 // שלב 2 – פריטים שנאספו (קישורים/תובנות/קבצים)
 // כאן נשמור רק טקסט/קישור. קבצים אמיתיים דורשים שרת – אפשר להוסיף בהמשך.
 export type ResourceItem = {
-  id: string
-  type: 'link' | 'note'
-  title: string
-  url?: string
-  done?: boolean
-  createdAt: number
-}
+  id: string;
+  type: "link" | "note";
+  title: string;
+  url?: string;
+  done?: boolean;
+  createdAt: number;
+};
 
 // שלב 3 – רעיונות
 export type Idea = {
-  id: string
-  text: string
-  color: 'yellow' | 'blue' | 'green' | 'pink'
-  votes: number
-  createdAt: number
-}
+  id: string;
+  text: string;
+  color: "yellow" | "blue" | "green" | "pink";
+  votes: number;
+  createdAt: number;
+};
 
 type WizardState = {
   // שלב 1
-  step1: Step1Data
-  setStep1: (patch: Partial<Step1Data>) => void
+  step1: Step1Data;
+  setStep1: (patch: Partial<Step1Data>) => void;
 
   // שלב 2
-  resources: ResourceItem[]
-  addResource: (item: Omit<ResourceItem, 'id' | 'createdAt'> & { title: string }) => void
-  toggleResourceDone: (id: string) => void
-  removeResource: (id: string) => void
+  resources: ResourceItem[];
+  addResource: (
+    item: Omit<ResourceItem, "id" | "createdAt"> & { title: string }
+  ) => void;
+  toggleResourceDone: (id: string) => void;
+  removeResource: (id: string) => void;
 
   // שלב 3
-  ideas: Idea[]
-  addIdea: (text: string, color?: Idea['color']) => void
-  voteIdea: (id: string, delta: 1 | -1) => void
-  removeIdea: (id: string) => void
-}
+  ideas: Idea[];
+  addIdea: (text: string, color?: Idea["color"]) => void;
+  voteIdea: (id: string, delta: 1 | -1) => void;
+  removeIdea: (id: string) => void;
+};
 
 export const useWizard = create<WizardState>()(
   persist(
     (set, get) => ({
       // --- מצב התחלתי ---
-      step1: { title: '', problem: '', audience: '', tags: [] },
+      step1: { title: "", problem: "", audience: "", tags: [] },
 
       resources: [],
 
       ideas: [],
 
       // --- פעולות שלב 1 ---
-      setStep1: (patch) =>
-        set((s) => ({ step1: { ...s.step1, ...patch } })),
+      setStep1: (patch) => set((s) => ({ step1: { ...s.step1, ...patch } })),
 
       // --- פעולות שלב 2 ---
       addResource: (item) =>
@@ -91,7 +92,7 @@ export const useWizard = create<WizardState>()(
         })),
 
       // --- פעולות שלב 3 ---
-      addIdea: (text, color = 'yellow') =>
+      addIdea: (text, color = "yellow") =>
         set((s) => ({
           ideas: [
             {
@@ -116,8 +117,8 @@ export const useWizard = create<WizardState>()(
         })),
     }),
     {
-      name: 'innovation-wizard', // מפתח בלוקאל סטורג’
+      name: "innovation-wizard", // מפתח בלוקאל סטורג’
       version: 1,
     }
   )
-)
+);

@@ -1,11 +1,12 @@
 // src/router.tsx
 import { createBrowserRouter } from 'react-router-dom'
 import App from './App'
-import Welcome from "./pages/Welcome";
+import Welcome from "./pages/Step1Page1";
 import Step1 from './pages/Step1'
 import Step2 from './pages/Step2'
 import Step3 from './pages/Step3'
-import GroupAssignment from "./components/GroupAssignment";
+import GroupAssignment from "./components/Step1Page2";
+import Step1Page3 from './components/Step1Page3';
 
 
 export const router = createBrowserRouter([
@@ -18,6 +19,8 @@ export const router = createBrowserRouter([
       { path: "step-2", element: <Step2 /> },
       { path: "step-3", element: <Step3 /> },
       {path: "group", element: <GroupAssignment />},
+      {path: "step1Page3", element: <Step1Page3/>}
+
    
     ],
   },

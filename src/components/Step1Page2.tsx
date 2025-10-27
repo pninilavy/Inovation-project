@@ -44,7 +44,7 @@ export default function GroupAssignment() {
   if (loading) return <div className="text-center mt-20">טוען נתונים...</div>;
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center relative rtl text-gray-800">
+    <div className="min-h-[93vh] bg-white flex flex-col items-center justify-center relative overflow-hidden rtl text-gray-800 rounded-3xl shadow-lg">
       <div className="text-center mb-10">
         <div className="flex justify-center mb-4">
           <img
@@ -56,9 +56,7 @@ export default function GroupAssignment() {
         <h2 className="text-2xl font-bold text-[#1f1f75]">
           שלום {user?.name?.split(" ")[0]} :)
         </h2>
-        <p className="text-lg mt-2">
-          שובצת בקבוצה מס' {user?.groupId} 
-        </p>
+        <p className="text-lg mt-2">שובצת בקבוצה מס' {user?.groupId}</p>
         <p className="text-lg mt-1">חברות הקבוצה שלך הן:</p>
       </div>
 
@@ -76,7 +74,7 @@ export default function GroupAssignment() {
       </div>
 
       <button
-        onClick={() => navigate("/step-1")}
+        onClick={() => navigate("/step1Page3")}
         className="mt-6 px-10 py-3 bg-[#1f1f75] text-white rounded-full text-xl font-semibold hover:bg-[#2a2aa2] transition flex items-center gap-2"
       >
         כניסה לחדר
