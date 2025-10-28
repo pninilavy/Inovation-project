@@ -9,6 +9,7 @@ import GroupAssignment from "./components/Step1/Step1Page2";
 import Step1Page3 from "./components/Step1/Step1Page3";
 import Step1Page4 from "./components/Step1/Step1Page4";
 import Step1Page5 from "./components/Step1/Step1Page5";
+import Step1Page6 from "./components/Step1/Step1Page6";
 
 
 export const router = createBrowserRouter([
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: "step1Page3", element: <Step1Page3 /> },
       { path: "step1Page4", element: <Step1Page4 /> },
       { path: "step1Page5", element: <Step1Page5 /> },
+      { path: "step1Page6", element: <Step1Page6 /> },
     ],
   },
 ]);
