@@ -26,9 +26,7 @@ export default function GroupAssignment() {
           { id: 4, name: "פלונית אלמונית", avatar: "/images/profile4.png" },
         ];
 
-        // בעתיד: החלפה בקריאה אמיתית לשרת לפי groupId
-        // const res = await fetch(`/api/groups/${user.groupId}/members`);
-        // const data = await res.json();
+  
 
         setMembers(data);
       } catch (err) {
