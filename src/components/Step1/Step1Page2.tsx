@@ -19,16 +19,31 @@ export default function GroupAssignment() {
     async function fetchMembers() {
       try {
         // כרגע מדמה שליפה אמיתית
-        const data: Member[] = [
-          { id: 1, name: "פלונית אלמונית", avatar: "/images/profile1.png" },
-          { id: 2, name: "פלונית אלמונית", avatar: "/images/profile2.png" },
-          { id: 3, name: "פלונית אלמונית", avatar: "/images/profile3.png" },
-          { id: 4, name: "פלונית אלמונית", avatar: "/images/profile4.png" },
-        ];
+        // const data: Member[] = [
+        //   { id: 1, name: "פלונית אלמונית", avatar: "/images/profile1.png" },
+        //   { id: 2, name: "פלונית אלמונית", avatar: "/images/profile2.png" },
+        //   { id: 3, name: "פלונית אלמונית", avatar: "/images/profile3.png" },
+        //   { id: 4, name: "פלונית אלמונית", avatar: "/images/profile4.png" },
+        // ];
 
-  
+        // setMembers(data);
+        // שליפה אמיתית מהשרת לפי groupId של המשתמש
+        const res = await fetch(
+          `http://localhost:8080/api/groups/${user?.groupId}/members`
+        );
+        if (!res.ok) {
+          throw new Error("שגיאה בשליפת חברות הקבוצה מהשרת");
+        }
+        const data = await res.json();
+        const formattedData = data.map((student: any) => ({
+          id: student.id,
+          name: `${student.firstName} ${student.lastName}`,
+          avatar: student.avatarUrl || "/images/default-profile.png", // אם אין תמונה
+        }));
+        console.log("📦 נתונים שהתקבלו מהשרת:", formattedData); // ← פה תראי בדיוק מה חזר
 
-        setMembers(data);
+        setMembers(formattedData);
+        // setMembers(data);
       } catch (err) {
         console.error("שגיאה בשליפת נתונים", err);
       } finally {

@@ -10,6 +10,7 @@ interface UserData {
   name: string;
   avatar: string;
   groupId: number; // ← חדש
+
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
