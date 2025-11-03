@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useUser } from "../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import AppContainer from "../components/AppContainer";
+import { resetLocalData } from "../hooks/useResetLocalData";
 
 export default function Welcome() {
   const [current, setCurrent] = useState(2);
@@ -47,54 +48,46 @@ export default function Welcome() {
     }
     return visible;
   };
-
   const handleEnter = async () => {
     if (!agree || !name) return alert("אנא מלאי שם ואשרי את ההשתתפות 🙂");
-
-    const studentData = {
-      firstName: name,
-      lastName: lastName,
-      tabletId: Math.floor(Math.random() * 10) + 1,
-      avatarUrl: profileImages[current],
-    };
-
-    try {
-      const response = await fetch(
-        "http://localhost:8080/api/students/register",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(studentData),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("שגיאה בשמירת הנתונים");
-      }
-
-      const savedStudent = await response.json();
-
-      // // שמירה ב־context לשימוש באפליקציה
-      // setUser({
-      //   name: `${savedStudent.firstName} ${savedStudent.lastName}`,
-      //   avatar: profileImages[current],
-      //   groupId: savedStudent.groupId, // מגיע מהשרת
-      // });
-setUser({
-  name: `${savedStudent.firstName} ${savedStudent.lastName}`,
-  avatar: savedStudent.avatarUrl, // ← עכשיו זה מגיע מהשרת
-  groupId: savedStudent.groupId,
-});
-
-      
-      navigate("/group");
-    } catch (err) {
-      console.error(err);
-      alert("אירעה שגיאה בעת שמירת התלמידה 😕");
+  
+    const response = await fetch("http://localhost:8080/api/students/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName: name,
+        lastName: lastName,
+        tabletId: Math.floor(Math.random() * 10) + 1,
+        avatarUrl: profileImages[current],
+      }),
+    });
+  
+    const savedStudent = await response.json();
+    const groupId = savedStudent.groupId;
+  
+    // 🔹 נבדוק אם יש כבר נתונים לקבוצה הזו בלוקאלסטורג'
+    const existingKeys = Object.keys(localStorage).filter((k) =>
+      k.includes(`group-${groupId}`)
+    );
+  
+    if (existingKeys.length === 0) {
+      // אין שום מפתח קודם ⇒ זו הקבוצה החדשה
+      console.log("🧹 קבוצה חדשה — מבצעת איפוס");
+      resetLocalData(groupId);
+    } else {
+      console.log("➡️ נתונים קיימים — מדלגת על איפוס");
     }
+  
+    // ממשיכים רגיל
+    setUser({
+      name: `${savedStudent.firstName} ${savedStudent.lastName}`,
+      avatar: savedStudent.avatarUrl,
+      groupId,
+    });
+  
+    navigate("/group");
   };
+  
 
   return (
     <div className="min-h-[93vh] bg-white flex flex-col items-center justify-center relative overflow-hidden rtl text-gray-800 rounded-3xl shadow-lg">

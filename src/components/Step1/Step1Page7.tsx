@@ -366,12 +366,13 @@ export default function Step1Page7() {
 
       {!hasVoted && (
         <div className="flex flex-col items-center gap-4 mb-10">
-          <button
-            onClick={() => handleVote(true)}
-            className="w-[300px] h-[56px] bg-[#DF57FF] text-white text-xl font-semibold rounded-full shadow-md hover:scale-105 transition"
-          >
-            מסכימה לסיכום
-          </button>
+       <button
+  onClick={() => navigate("/step2Page1")}
+  className="w-[300px] h-[56px] bg-[#DF57FF] text-white text-xl font-semibold rounded-full shadow-md hover:scale-105 transition"
+>
+  מסכימה לסיכום
+</button>
+
           <button
             onClick={() => handleVote(false)}
             className="w-[300px] h-[56px] bg-[#E6E6E6] text-[#1f1f75] text-xl font-semibold rounded-full shadow-md hover:scale-105 transition"
