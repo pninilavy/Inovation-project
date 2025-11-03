@@ -12,6 +12,7 @@ import Step1Page5 from "./components/Step1/Step1Page5";
 import Step1Page6 from "./components/Step1/Step1Page6";
 import Step1Page7 from "./components/Step1/Step1Page7";
 import Step1Page8 from "./components/Step1/Step1Page8";
+import Step1Page9 from "./components/Step1/Step1Page9";
 import Step2Page1 from "./components/Step2/Step2Page1";
 import Step2Page2 from "./components/Step2/Step2Page2";
 import Step2Page3 from "./components/Step2/Step2Page3";
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
       { path: "step1Page6", element: <Step1Page6 /> },
       { path: "step1Page7", element: <Step1Page7 /> },
       { path: "step1Page8", element: <Step1Page8 /> },
+      { path: "step1Page9", element: <Step1Page9 /> },
       { path: "step2Page1", element: <Step2Page1 /> },
       { path: "step2Page2", element: <Step2Page2 /> },
       { path: "step2Page3", element: <Step2Page3 /> }, 
