@@ -5,3 +5,15 @@
 :root { color-scheme: light; }
 html, body, #root { height: 100%; }
 body { font-family: Rubik, system-ui, Arial, sans-serif; background:#FAFAFA; color:#111827; }
+/* --- הפתרון החשוב --- */
+@media (min-width: 768px) {
+    .md\:h-screen {
+      height: 100% !important;
+    }
+  }
+
+  html, body, #root {
+    height: 100% !important;
+    overflow-x: hidden !important;
+  }
+  

@@ -25,7 +25,7 @@ export default function Step1Page3() {
   }, [user]);
 
   return (
-    <div className="min-h-[93vh] bg-white flex flex-col items-center justify-center relative overflow-hidden rtl text-gray-800 rounded-3xl shadow-lg">
+    <div className="min-h-[93vh] bg-white flex flex-col items-center justify-center relative overflow-hidden rtl text-gray-800 rounded-3xl">
   
 
       <div className="text-center mb-10 mt-10">
@@ -48,7 +48,10 @@ export default function Step1Page3() {
 
       <button
         onClick={() => navigate("/step1Page4")}
-        className="mt-6 px-10 py-3 bg-[#1f1f75] text-white rounded-full text-xl font-semibold hover:bg-[#2a2aa2] transition flex items-center gap-2"
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 
+             z-50 px-10 py-3 bg-[#1f1f75] text-white rounded-full 
+             text-xl font-semibold hover:bg-[#2a2aa2] 
+             transition flex items-center gap-2"
       >
         מתחילים!!!
         <ChevronLeft size={22} className="text-white" />

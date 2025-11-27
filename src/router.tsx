@@ -12,11 +12,19 @@ import Step1Page5 from "./components/Step1/Step1Page5";
 import Step1Page6 from "./components/Step1/Step1Page6";
 import Step1Page7 from "./components/Step1/Step1Page7";
 import Step1Page8 from "./components/Step1/Step1Page8";
-import Step1Page9 from "./components/Step1/Step1Page9";
 import Step2Page1 from "./components/Step2/Step2Page1";
 import Step2Page2 from "./components/Step2/Step2Page2";
 import Step2Page3 from "./components/Step2/Step2Page3";
 import Step2Page4 from "./components/Step2/Step2Page4";
+import Step3Page1 from "./components/Step3/Step3Page1";
+import Step3Page2 from "./components/Step3/Step3Page2";
+import Step3Page3 from "./components/Step3/Step3Page3";
+import Step4Page1 from "./components/Step4/Step4Page1";
+import Step4Page2 from "./components/Step4/Step4Page2";
+import Step4Page3 from "./components/Step4/Step4Page3";
+import Step4Page4 from "./components/Step4/Step4Page4";
+import Step4Page5 from "./components/Step4/Step4Page5";
+import Step4Page6 from "./components/Step4/Step4Page6";
 
 export const router = createBrowserRouter([
   {
@@ -29,16 +37,26 @@ export const router = createBrowserRouter([
       { path: "step-3", element: <Step3 /> },
       { path: "group", element: <GroupAssignment /> },
       { path: "step1Page3", element: <Step1Page3 /> },
+      //{ path: "step1Page3", element: <Step2Page1 /> },//לבנתיים
       { path: "step1Page4", element: <Step1Page4 /> },
       { path: "step1Page5", element: <Step1Page5 /> },
       { path: "step1Page6", element: <Step1Page6 /> },
       { path: "step1Page7", element: <Step1Page7 /> },
       { path: "step1Page8", element: <Step1Page8 /> },
-      { path: "step1Page9", element: <Step1Page9 /> },
       { path: "step2Page1", element: <Step2Page1 /> },
       { path: "step2Page2", element: <Step2Page2 /> },
       { path: "step2Page3", element: <Step2Page3 /> }, 
       { path: "step2Page4", element: <Step2Page4 /> },
+      { path: "step3Page1", element: <Step3Page1 /> },
+      { path: "step3Page2", element: <Step3Page2 /> },
+      { path: "step3Page3", element: <Step3Page3 /> },
+      { path: "step4Page1", element: <Step4Page1 /> },
+      { path: "step4Page2", element: <Step4Page2 /> },
+      { path: "step4Page3", element: <Step4Page3 /> },
+      { path: "step4Page4", element: <Step4Page4 /> },
+      { path: "step4Page5", element: <Step4Page5 /> },
+      { path: "step4Page6", element: <Step4Page6 /> },
+
     ],
   },
 ]);

@@ -50,7 +50,7 @@ export default function Welcome() {
   };
   const handleEnter = async () => {
     if (!agree || !name) return alert("אנא מלאי שם ואשרי את ההשתתפות 🙂");
-  
+
     const response = await fetch("http://localhost:8080/api/students/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -61,15 +61,15 @@ export default function Welcome() {
         avatarUrl: profileImages[current],
       }),
     });
-  
+
     const savedStudent = await response.json();
     const groupId = savedStudent.groupId;
-  
+
     // 🔹 נבדוק אם יש כבר נתונים לקבוצה הזו בלוקאלסטורג'
     const existingKeys = Object.keys(localStorage).filter((k) =>
       k.includes(`group-${groupId}`)
     );
-  
+
     if (existingKeys.length === 0) {
       // אין שום מפתח קודם ⇒ זו הקבוצה החדשה
       console.log("🧹 קבוצה חדשה — מבצעת איפוס");
@@ -77,20 +77,31 @@ export default function Welcome() {
     } else {
       console.log("➡️ נתונים קיימים — מדלגת על איפוס");
     }
-  
+
     // ממשיכים רגיל
+    console.log("📌 savedStudent מהשרת:", savedStudent);
+
     setUser({
+      id: savedStudent.id,
       name: `${savedStudent.firstName} ${savedStudent.lastName}`,
       avatar: savedStudent.avatarUrl,
       groupId,
     });
-  
+
+    console.log("🎉 setUser הוזן לקונטקסט עם:", {
+      id: savedStudent.id,
+      name: `${savedStudent.firstName} ${savedStudent.lastName}`,
+      avatar: savedStudent.avatarUrl,
+      groupId,
+    });
+
+
     navigate("/group");
   };
-  
+
 
   return (
-    <div className="min-h-[93vh] bg-white flex flex-col items-center justify-center relative overflow-hidden rtl text-gray-800 rounded-3xl shadow-lg">
+    <div className="min-h-[93vh] bg-white flex flex-col items-center justify-center relative overflow-hidden rtl text-gray-800 rounded-3xl">
       {/* לוגואים */}
       <img
         src="/images/pituachlogo.png"
@@ -105,9 +116,10 @@ export default function Welcome() {
 
       {/* כותרת */}
       <h1 className="text-3xl md:text-4xl font-bold text-[#1f1f75] mb-2">
-        ברוכה הבאה לחדר חדשנות!
+        ברוכה הבאה לתהליך
+
       </h1>
-      <p className="text-lg mb-8">בחרי את האיור שהכי קרוב לתמונת הפרופיל שלך</p>
+      <p className="text-lg mb-8">בחרי תמונת פרופיל</p>
 
       {/* קרוסלה */}
       <div className="relative flex items-center justify-center mb-10 w-full max-w-4xl">
@@ -126,11 +138,10 @@ export default function Welcome() {
                 key={i}
                 src={src}
                 alt={`profile-${i}`}
-                className={`transition-all duration-500 ease-in-out rounded-full border-4 object-contain ${
-                  isCenter
-                    ? "w-32 h-32 scale-125 border-[#3B2DBB] shadow-[0_0_15px_rgba(59,45,187,0.4)]"
-                    : "w-24 h-24 border-transparent opacity-80"
-                }`}
+                className={`transition-all duration-500 ease-in-out rounded-full border-4 object-contain ${isCenter
+                  ? "w-32 h-32 scale-125 border-[#3B2DBB] shadow-[0_0_15px_rgba(59,45,187,0.4)]"
+                  : "w-24 h-24 border-transparent opacity-80"
+                  }`}
               />
             );
           })}
@@ -148,7 +159,7 @@ export default function Welcome() {
       <div className="w-full max-w-md flex flex-col gap-4 items-center">
         <input
           type="text"
-          placeholder="השם שלך?"
+          placeholder="שם פרטי"
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="w-full text-center border border-gray-300 rounded-xl py-3 text-lg outline-none focus:ring-2 focus:ring-[#3B2DBB]"
@@ -171,14 +182,18 @@ export default function Welcome() {
           אשמח לקחת חלק במשימה, אני מוכנה להתחיל!
         </label>
 
-        <button
-          onClick={handleEnter}
-          className="mt-6 px-10 py-3 bg-[#1f1f75] text-white rounded-full text-xl font-semibold hover:bg-[#2a2aa2] transition flex items-center gap-2"
-        >
-          כניסה לחדר
-          <ChevronLeft size={22} className="text-white" />
-        </button>
       </div>
+      <button
+        onClick={handleEnter}
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 
+             z-50 px-10 py-3 bg-[#1f1f75] text-white rounded-full 
+             text-xl font-semibold hover:bg-[#2a2aa2] 
+             transition flex items-center gap-2"
+      >
+        אישור כניסה
+        <ChevronLeft size={22} className="text-white" />
+      </button>
+
     </div>
   );
 }

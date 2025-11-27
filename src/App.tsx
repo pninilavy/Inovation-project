@@ -25,13 +25,15 @@ import { UserProvider } from "./context/UserContext";
 export default function App() {
   return (
     <UserProvider>
-      <main className="min-h-screen flex flex-row-reverse rtl bg-brand-900">
+      <main className="h-screen flex flex-row-reverse rtl bg-brand-900 overflow-hidden">
         <SidebarToolbar />
-        <div className="flex-1 p-6 pr-28 md:pr-32 lg:pr-40">
-          {/* כל העמודים עכשיו רקעים כחולים, אין מסגרות לבנות */}
-          <Outlet />
+        <div className="flex-1 p-6 pr-28 md:pr-32 lg:pr-40 flex justify-center items-center">
+          <div className="w-full h-full bg-white rounded-3xl shadow-lg overflow-y-auto">
+            <Outlet />
+          </div>
         </div>
       </main>
+
     </UserProvider>
   );
 }

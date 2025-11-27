@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useUser } from "../../context/UserContext";
 import { useChat } from "../../hooks/useChat";
@@ -9,20 +8,17 @@ export default function Step1Page5() {
   const username = user?.name || "משתמשת";
   const room = `group-${user?.groupId || 1}`;
   const navigate = useNavigate();
-  const { messages, resetChat } = useChat(room, username);
+  const { messages, sendMessage } = useChat(room, username);
 
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [summaries, setSummaries] = useState<{
-    current: string;
-    desired: string;
-  } | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [isWaitingForSummary, setIsWaitingForSummary] = useState(false); // ✅ רק למי שלחצה
 
   const groupId = user.groupId;
   const processId = 1;
 
-  // ✅ שליפת חברות מהשרת
+  // ✅ שליפת חברות הקבוצה
   useEffect(() => {
     async function fetchMembers() {
       try {
@@ -38,7 +34,7 @@ export default function Step1Page5() {
           }))
         );
       } catch (err) {
-        console.error("שגיאה בשליפת נתונים:", err);
+        console.error("❌ שגיאה בשליפת נתונים:", err);
       } finally {
         setLoading(false);
       }
@@ -46,182 +42,185 @@ export default function Step1Page5() {
     fetchMembers();
   }, [groupId]);
 
-  if (loading) return <div className="text-center mt-20">טוען נתונים...</div>;
+  // 🧠 האזנה רק לסיום הסיכום
+  useEffect(() => {
+    const lastMsg = messages[messages.length - 1];
+    if (!lastMsg) return;
 
+    // ✅ רק אם המשתמשת הזו *מחכה* – נעביר אותה לעמוד הבא
+    if (lastMsg.content === "[SUMMARY_READY]" && isWaitingForSummary) {
+      setIsLoadingSummary(false);
+      navigate("/step1Page6");
+    }
+  }, [messages, isWaitingForSummary, navigate]);
+
+  if (loading)
+    return <div className="text-center mt-20">טוען נתונים...</div>;
+
+  // ✅ זיהוי מי חסרה בשיתופים
   const participants = members.map((m) => m.name);
   const senders = Array.from(new Set(messages.map((m) => m.username)));
   const missing = participants.filter((p) => !senders.includes(p));
+  const allShared = missing.length === 0;
 
+  // מסננים הודעות למצוי ורצוי
   const current = messages.filter((m) => m.content.startsWith("[מצוי]"));
   const desired = messages.filter((m) => m.content.startsWith("[רצוי]"));
 
-  // ✅ יצירת או שליפת סיכום
+  // ✅ לחיצה על “לשלב הבא”
   const handleNext = async () => {
-    if (missing.length > 0) {
+    if (!allShared) {
       alert(`עדיין לא כל המשתתפות שיתפו 🙂\nחסרות: ${missing.join(", ")}`);
       return;
     }
 
-    try {
-      setIsLoadingSummary(true);
-      console.log("🔍 בודקת אם קיים סיכום בקבוצה", groupId);
+    // אם כבר בתהליך – לא לעשות כלום (מניעת לחיצות כפולות)
+    if (isLoadingSummary) return;
 
-      // 🔹 שלב 1: לבדוק אם כבר יש סיכום קיים
-      const existingRes = await fetch(
+    // קודם בודקים אם כבר יש סיכום קיים — במקרה שבינתיים מישהי אחרת כבר סיימה
+    try {
+      const check = await fetch(
         `http://localhost:8080/api/groups/${groupId}/summary?processId=${processId}`
       );
-      const existingData = await existingRes.json();
-
-      if (
-        existingData.success &&
-        (existingData.current || existingData.desired)
-      ) {
-        console.log("🟢 סיכום קיים נמצא:", existingData);
-        setSummaries({
-          current: existingData.current,
-          desired: existingData.desired,
-        });
-        setIsLoadingSummary(false);
+      const existing = await check.json();
+      if (existing.success && (existing.current || existing.desired)) {
+        navigate("/step1Page6");
         return;
       }
+    } catch (err) {
+      console.error("❌ שגיאה בבדיקת סיכום קיים:", err);
+      // אם יש שגיאה כאן, נמשיך בכל זאת לנסות ליצור סיכום
+    }
 
-      // 🔹 שלב 2: לבדוק אם קיימת עורכת
-      console.log("🧾 בודקת אם קיימת עורכת...");
-      const editorRes = await fetch(
+    // מכאן – המשתמשת הזו מתחילה/מצטרפת לחיכוי לסיכום
+    setIsLoadingSummary(true);
+    setIsWaitingForSummary(true);
+
+    try {
+      // אם אין עורכת — נגדיר את ChatGPT כעורכת
+      const editorCheck = await fetch(
         `http://localhost:8080/api/groups/${groupId}/editor?processId=${processId}`
       );
-      const editorData = await editorRes.json();
+      const editorData = await editorCheck.json();
+      let isFirst = false;
 
       if (!editorData.editorName) {
-        console.log("🤖 אין עורכת — מגדירה את ChatGPT כעורכת...");
         const chooseRes = await fetch(
           `http://localhost:8080/api/groups/${groupId}/choose-editor?processId=${processId}&editorName=ChatGPT`,
           { method: "POST" }
         );
-        if (!chooseRes.ok) throw new Error("שגיאה ביצירת עורכת ChatGPT");
-      } else {
-        console.log("👩‍💼 קיימת כבר עורכת:", editorData.editorName);
+        if (!chooseRes.ok) {
+          throw new Error("שגיאה בהגדרת עורכת ChatGPT");
+        }
+        isFirst = true;
       }
 
-      // 🔹 שלב 3: יצירת סיכום חדש
-      console.log("📤 שולחת נתונים ל-GPT...");
+      if (isFirst) {
+        // 🔹 רק הראשונה שיוצרת תיצור את הסיכום
 
-      const summarize = async (type: string, text: string) => {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_OPENAI_KEY}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "system",
-                content:
-                  "את מסכמת שיחות קבוצתיות לעברית פשוטה וברורה בסגנון נעים.",
-              },
-              {
-                role: "user",
-                content: `סכמי את ${type} הבא:\n${text}`,
-              },
-            ],
-          }),
-        });
+        const currentMsgs = current
+          .map((m) => `${m.username}: ${m.content.replace(/^\[.*?\]\s*/, "")}`)
+          .join("\n");
+        const desiredMsgs = desired
+          .map((m) => `${m.username}: ${m.content.replace(/^\[.*?\]\s*/, "")}`)
+          .join("\n");
 
-        const data = await res.json();
-        return data.choices?.[0]?.message?.content || "";
-      };
+        const summarize = async (type: string, text: string) => {
+          const res = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${import.meta.env.VITE_OPENAI_KEY}`,
+            },
+            body: JSON.stringify({
+              model: "gpt-4o-mini",
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "את מסכמת שיחות קבוצתיות לעברית פשוטה וברורה בסגנון נעים.",
+                },
+                {
+                  role: "user",
+                  content: `סכמי את ${type} הבא:\n${text}`,
+                },
+              ],
+            }),
+          });
+          const data = await res.json();
+          return data.choices?.[0]?.message?.content || "";
+        };
 
-      const currentMsgs = current
-        .map((m) => `${m.username}: ${m.content.replace(/^\[.*?\]\s*/, "")}`)
-        .join("\n");
-      const desiredMsgs = desired
-        .map((m) => `${m.username}: ${m.content.replace(/^\[.*?\]\s*/, "")}`)
-        .join("\n");
+        // 🔹 שליחה ל־GPT
+        const currentSummary = await summarize("המצוי", currentMsgs);
+        const desiredSummary = await summarize("הרצוי", desiredMsgs);
 
-      const currentSummary = await summarize("המצוי", currentMsgs);
-      const desiredSummary = await summarize("הרצוי", desiredMsgs);
+        // 🔹 שמירה בשרת
+        await fetch(
+          `http://localhost:8080/api/groups/${groupId}/summary?processId=${processId}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              current: currentSummary,
+              desired: desiredSummary,
+            }),
+          }
+        );
 
-      console.log("✅ סיכום המצוי:", currentSummary);
-      console.log("✅ סיכום הרצוי:", desiredSummary);
+        // הודעה לצ׳אט כדי שבנות שלחצו בזמן יחכו ויעברו
+        sendMessage("[SUMMARY_READY]");
 
-      // 🔹 שלב 4: שמירה בשרת
-      const saveRes = await fetch(
-        `http://localhost:8080/api/groups/${groupId}/summary?processId=${processId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            current: currentSummary,
-            desired: desiredSummary,
-          }),
-        }
-      );
-
-      const saveData = await saveRes.json();
-      if (!saveData.success) throw new Error(saveData.message);
-
-      // עדכון תצוגה
-      setSummaries({ current: currentSummary, desired: desiredSummary });
-      console.log("🧠 נוצר סיכום חדש בהצלחה!");
+        // גם אצל היוצרת נעבור מיד
+        navigate("/step1Page6");
+      } else {
+        // הבנות האחרות לא יוצרות סיכום נוסף – רק מחכות ל-[SUMMARY_READY]
+        console.log("מישהי אחרת כבר יוצרת את הסיכום – מחכה להודעת SUMMARY_READY");
+      }
     } catch (err) {
-      console.error("❌ שגיאה בתהליך הסיכום:", err);
+      console.error("❌ שגיאה בתהליך:", err);
       alert("שגיאה בתהליך הסיכום 😔");
-    } finally {
       setIsLoadingSummary(false);
+      setIsWaitingForSummary(false);
     }
   };
 
   return (
-    <div className="min-h-[93vh] bg-white flex flex-col items-center rounded-3xl shadow-lg px-6 py-10">
+    <div className="min-h-[93vh] bg-white flex flex-col items-center rounded-3xl px-6 py-10">
       <h1 className="text-2xl md:text-3xl font-bold text-[#1f1f75] mb-10">
-        סיכום האתגר הקבוצתי
+        המציאות בעיניים שלכן – חברות הקבוצה משתפות:
       </h1>
 
+      {/* שתי העמודות */}
       <div className="flex flex-col md:flex-row gap-8 w-full max-w-6xl">
         <Column
-          title="המצוי – מה קיים היום?"
+          title="מה המצב המצוי כיום?"
           color="blue"
           data={current}
           members={members}
-          summary={summaries?.current}
         />
         <Column
-          title="הרצוי – מה הייתי רוצה?"
+          title="מהו המצב הרצוי לדעתכן?"
           color="purple"
           data={desired}
           members={members}
-          summary={summaries?.desired}
         />
       </div>
 
-      {/* 🧠 כפתור יצירת סיכום – יוצג רק אם עדיין אין סיכום */}
-      {!summaries && (
-        <button
-          onClick={handleNext}
-          disabled={isLoadingSummary}
-          className={`mt-10 px-12 py-3 rounded-full text-xl font-semibold transition ${
-            isLoadingSummary
-              ? "bg-gray-400 cursor-wait text-white"
-              : "bg-[#1f1f75] text-white hover:bg-[#2a2aa2]"
-          }`}
-        >
-          {isLoadingSummary ? "מכינה סיכום..." : "🧠 יצירת סיכום בעזרת GPT"}
-        </button>
-      )}
+      {/* כפתור מעבר לשלב הבא */}
+      <button
+        onClick={handleNext}
+        disabled={!allShared || isLoadingSummary}
+        className={`mt-10 px-12 py-3 rounded-full text-xl font-semibold transition ${
+          !allShared || isLoadingSummary
+            ? "bg-gray-400 cursor-not-allowed text-white"
+            : "bg-[#1f1f75] text-white hover:bg-[#2a2aa2]"
+        }`}
+      >
+        {isLoadingSummary ? "יוצרות סיכום..." : "⏭ לשלב הבא"}
+      </button>
 
-      {/* ⏭ כפתור לשלב הבא – יוצג רק אחרי שנוצר סיכום */}
-      {summaries && (
-        <button
-          onClick={() => navigate("/Step1Page7")}
-          className="mt-10 px-12 py-3 rounded-full text-xl font-semibold bg-green-600 text-white hover:bg-green-700 transition"
-        >
-          ⏭ לשלב הבא
-        </button>
-      )}
-
-      {missing.length > 0 && (
+      {!allShared && (
         <p className="mt-4 text-sm text-red-600 font-semibold">
           עדיין לא שלחו: {missing.join(", ")}
         </p>
@@ -230,19 +229,17 @@ export default function Step1Page5() {
   );
 }
 
-// ✅ קומפוננטת עמודה
+// ✅ עמודת המצוי / הרצוי
 function Column({
   title,
   color,
   data,
   members,
-  summary,
 }: {
   title: string;
   color: "blue" | "purple";
   data: { username: string; content: string }[];
   members: { name: string; avatar: string }[];
-  summary?: string;
 }) {
   const colors =
     color === "blue"
@@ -263,9 +260,6 @@ function Column({
               key={i}
               className="bg-white border border-gray-200 rounded-xl p-3 w-[48%] shadow-sm text-sm flex flex-col"
             >
-              <p className="text-gray-700 mb-2">
-                {msg.content.replace(/^\[.*?\]\s*/, "")}
-              </p>
               <div className="flex items-center gap-2 mt-auto">
                 <img
                   src={member?.avatar || "/images/default-profile.png"}
@@ -276,32 +270,13 @@ function Column({
                   {msg.username}
                 </p>
               </div>
+              <p className="text-gray-700 mb-2">
+                {msg.content.replace(/^\[.*?\]\s*/, "")}
+              </p>
             </div>
           );
         })}
       </div>
-
-      {/* תיבת סיכום בתוך המסגרת */}
-      {summary && (
-        <div
-          className={`mt-6 border-t pt-3 ${
-            color === "blue" ? "border-[#baeaff]" : "border-[#d5c8ff]"
-          }`}
-        >
-          <div
-            className={`p-4 rounded-xl ${
-              color === "blue" ? "bg-[#dff6ff]" : "bg-[#efe9ff]"
-            } shadow-inner`}
-          >
-            <h3 className="font-bold text-[#1f1f75] mb-2 text-sm">
-              סיכום {title.includes("המצוי") ? "המצוי" : "הרצוי"}:
-            </h3>
-            <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
-              {summary}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

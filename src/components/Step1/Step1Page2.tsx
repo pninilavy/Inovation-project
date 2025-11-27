@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useUser } from "../../context/UserContext";
 import { ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import SockJS from "sockjs-client";
+import { Client } from "@stomp/stompjs";
 
 interface Member {
   id: number;
@@ -16,48 +18,86 @@ export default function GroupAssignment() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!user?.groupId || !user?.name) return;
+
+    // 🔹 שלב 1: שליפת רשימה ראשונית מהשרת
     async function fetchMembers() {
       try {
-        // כרגע מדמה שליפה אמיתית
-        // const data: Member[] = [
-        //   { id: 1, name: "פלונית אלמונית", avatar: "/images/profile1.png" },
-        //   { id: 2, name: "פלונית אלמונית", avatar: "/images/profile2.png" },
-        //   { id: 3, name: "פלונית אלמונית", avatar: "/images/profile3.png" },
-        //   { id: 4, name: "פלונית אלמונית", avatar: "/images/profile4.png" },
-        // ];
-
-        // setMembers(data);
-        // שליפה אמיתית מהשרת לפי groupId של המשתמש
         const res = await fetch(
-          `http://localhost:8080/api/groups/${user?.groupId}/members`
+          `http://localhost:8080/api/groups/${user.groupId}/members`
         );
-        if (!res.ok) {
-          throw new Error("שגיאה בשליפת חברות הקבוצה מהשרת");
-        }
         const data = await res.json();
         const formattedData = data.map((student: any) => ({
           id: student.id,
           name: `${student.firstName} ${student.lastName}`,
-          avatar: student.avatarUrl || "/images/default-profile.png", // אם אין תמונה
+          avatar: student.avatarUrl || "/images/default-profile.png",
         }));
-        console.log("📦 נתונים שהתקבלו מהשרת:", formattedData); // ← פה תראי בדיוק מה חזר
-
         setMembers(formattedData);
-        // setMembers(data);
       } catch (err) {
-        console.error("שגיאה בשליפת נתונים", err);
+        console.error("❌ שגיאה בשליפת חברות הקבוצה", err);
       } finally {
         setLoading(false);
       }
     }
 
     fetchMembers();
-  }, [user?.groupId]);
+
+    // 🔹 שלב 2: חיבור ל־WebSocket
+    const socket = new SockJS("http://localhost:8080/chat");
+    const client = new Client({
+      webSocketFactory: () => socket,
+      reconnectDelay: 5000,
+    });
+
+    client.onConnect = () => {
+      console.log("✅ WebSocket התחבר בהצלחה");
+
+      const room = `group-${user.groupId}`;
+
+      // הרשמה לערוץ של הקבוצה
+      client.subscribe(`/topic/${room}`, (msg) => {
+        const body = JSON.parse(msg.body);
+
+        if (body.type === "JOIN") {
+          console.log("👋 בת חדשה הצטרפה:", body.username);
+          setMembers((prev) => {
+            // אם היא כבר ברשימה — לא מוסיפים שוב
+            if (prev.some((m) => m.name === body.username)) return prev;
+            return [
+              ...prev,
+              {
+                id: Date.now(), name: body.username, avatar: body.avatar || "/images/default-profile.png",
+              },
+            ];
+          });
+        }
+      });
+
+      // 🔹 שליחת הודעת JOIN לשרת
+      client.publish({
+        destination: `/app/join/${room}`,
+        body: JSON.stringify({
+          username: user.name,
+          avatar: user.avatar, // ⬅️ תוספת חשובה!
+          room,
+          type: "JOIN",
+        }),
+      });
+    };
+
+    client.activate();
+
+    // 🔹 ניקוי בעת עזיבה
+    return () => {
+      console.log("🔌 מתנתקת מה-WebSocket");
+      client.deactivate();
+    };
+  }, [user?.groupId, user?.name]);
 
   if (loading) return <div className="text-center mt-20">טוען נתונים...</div>;
 
   return (
-    <div className="min-h-[93vh] bg-white flex flex-col items-center justify-center relative overflow-hidden rtl text-gray-800 rounded-3xl shadow-lg">
+    <div className="min-h-[93vh] bg-white flex flex-col items-center justify-center relative overflow-hidden rtl text-gray-800 ">
       <div className="text-center mb-10">
         <div className="flex justify-center mb-4">
           <img
@@ -69,7 +109,8 @@ export default function GroupAssignment() {
         <h2 className="text-2xl font-bold text-[#1f1f75]">
           שלום {user?.name?.split(" ")[0]} :)
         </h2>
-        <p className="text-lg mt-2">שובצת בקבוצה מס' {user?.groupId}</p>
+        <p className="text-lg mt-1"> טוב לראות אותך כאן! </p>
+        <p className="text-lg mt-2">הינך משתייכת לקבוצה מס' {user?.groupId}</p>
         <p className="text-lg mt-1">חברות הקבוצה שלך הן:</p>
       </div>
 
@@ -88,9 +129,12 @@ export default function GroupAssignment() {
 
       <button
         onClick={() => navigate("/step1Page3")}
-        className="mt-6 px-10 py-3 bg-[#1f1f75] text-white rounded-full text-xl font-semibold hover:bg-[#2a2aa2] transition flex items-center gap-2"
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 
+             z-50 px-10 py-3 bg-[#1f1f75] text-white rounded-full 
+             text-xl font-semibold hover:bg-[#2a2aa2] 
+             transition flex items-center gap-2"
       >
-        כניסה לחדר
+        הבא
         <ChevronLeft size={22} className="text-white" />
       </button>
     </div>

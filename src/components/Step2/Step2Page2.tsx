@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useUser } from "../../context/UserContext";
 import { useChat } from "../../hooks/useChat";
 import { useNavigate } from "react-router-dom";
-import { Trash2 } from "lucide-react"; // ← אייקון פח למחיקה
+import { Trash2 } from "lucide-react";
 
 interface Item {
   id: number;
@@ -27,8 +27,35 @@ export default function Step2Page2() {
   const [items, setItems] = useState<Item[]>([]);
   const [showPopup, setShowPopup] = useState("");
   const [editingDone, setEditingDone] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
-  // === קביעת עורכת אקראית ===
+  const [doneUsers, setDoneUsers] = useState<string[]>([]);
+
+  // ✅ בנות הקבוצה + דגל האם כולן כבר הגיעו לשלב
+  const [members, setMembers] = useState<string[]>([]);
+  const [allArrived, setAllArrived] = useState(false);
+
+  // ✅ שליפת כל בנות הקבוצה (רק שמות, בלי שמירה בשרת)
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const res = await fetch(
+          `http://localhost:8080/api/groups/${groupId}/members`
+        );
+        const data = await res.json();
+        setMembers(
+          data.map(
+            (s: any) => `${s.firstName} ${s.lastName}`
+          )
+        );
+      } catch (err) {
+        console.error("❌ שגיאה בשליפת חברות קבוצה:", err);
+      }
+    }
+    fetchMembers();
+  }, [groupId]);
+
+  // === קביעת עורכת אקראית (נשמר רק ב-localStorage לשם, לא לפריטים) ===
   useEffect(() => {
     const savedEditor = localStorage.getItem(`editor_step2_${room}`);
     if (savedEditor) {
@@ -53,92 +80,110 @@ export default function Step2Page2() {
       setEditor(chosen);
       setIsEditor(true);
     }
-  }, [messages, username, room]);
+  }, [messages, username, room, sendMessage]);
 
-  // === קבלת הודעות מה-WebSocket ===
+  // === קבלת הודעות מה-WebSocket ובניית המצב מהצ׳אט בלבד ===
   useEffect(() => {
+    let newItems: Item[] = [];
+    const removedIds = new Set<number>();
+    let editorName = editor;
+    let editingFinished = false;
+    const doneList: string[] = [];
+
     messages.forEach((m) => {
-      if (m.content.startsWith("[editor]")) {
-        const name = m.content.replace("[editor]", "").trim();
-        setEditor(name);
-        if (name === username)
-          setShowPopup("🎉 נבחרת להיות העורכת לשלב זה!");
-        else setShowPopup(`נבחרה להיות העורכת: ${name}`);
+      const content = m.content || "";
 
-      } else if (m.content.startsWith("[add-item]")) {
-        const i = JSON.parse(m.content.replace("[add-item]", "").trim());
-        setItems((prev) => {
-          if (prev.some((x) => x.id === i.id)) return prev;
-          const updated = [...prev, i];
-          localStorage.setItem(`step2_top_${room}`, JSON.stringify(updated));
-          return updated;
-        });
-
-      } else if (m.content.startsWith("[remove-item]")) {
-        const id = JSON.parse(m.content.replace("[remove-item]", "").trim());
-        setItems((prev) => {
-          const updated = prev.filter((x) => x.id !== id);
-          localStorage.setItem(`step2_top_${room}`, JSON.stringify(updated));
-          return updated;
-        });
-
-      } else if (m.content.startsWith("[editing-done]")) {
-        setEditingDone(true);
-        setShowPopup("✅ העורכת סיימה להוסיף פריטים. ניתן להמשיך לשלב הבא!");
-        localStorage.setItem(`editing_done_${room}`, "true");
+      if (content.startsWith("[editor]")) {
+        const name = content.replace("[editor]", "").trim();
+        editorName = name;
+      } else if (content.startsWith("[add-item]")) {
+        try {
+          const item: Item = JSON.parse(
+            content.replace("[add-item]", "").trim()
+          );
+          newItems.push(item);
+        } catch (e) {
+          console.error("parse add-item error", e);
+        }
+      } else if (content.startsWith("[remove-item]")) {
+        try {
+          const id = JSON.parse(
+            content.replace("[remove-item]", "").trim()
+          ) as number;
+          removedIds.add(id);
+        } catch (e) {
+          console.error("parse remove-item error", e);
+        }
+      } else if (content.startsWith("[editing-done]")) {
+        editingFinished = true;
+      } else if (content.startsWith("[step2-done]")) {
+        const name = content.replace("[step2-done]", "").trim();
+        if (!doneList.includes(name)) doneList.push(name);
       }
     });
-  }, [messages]);
 
-  // === טעינה מהלוקל סטורג׳ ===
+    const uniqueById = new Map<number, Item>();
+    newItems.forEach((it) => {
+      if (!removedIds.has(it.id)) {
+        uniqueById.set(it.id, it);
+      }
+    });
+
+    setItems(Array.from(uniqueById.values()));
+    if (editorName) setEditor(editorName);
+    setEditingDone(editingFinished);
+    setDoneUsers(doneList);
+
+    if (editorName && editorName === username) {
+      setIsEditor(true);
+    } else if (editorName) {
+      setIsEditor(false);
+    }
+  }, [messages, username, editor]);
+
+  // ✅ חישוב אם *כולן* כבר סיימו את Step2Page1 (שלחו [step2-done])
+  const missingUsers = members.filter((name) => !doneUsers.includes(name));
+
   useEffect(() => {
-    const base = JSON.parse(localStorage.getItem(`step2_top_${room}`) || "[]");
-    setItems(base);
-    const done = localStorage.getItem(`editing_done_${room}`) === "true";
-    setEditingDone(done);
-  }, []);
+    if (!members.length) return;
+    setAllArrived(missingUsers.length === 0);
+  }, [members, doneUsers]); // missingUsers נגזר מהם
 
-  // === הוספה חדשה ===
-  const handleAdd = (type: "need" | "constraint") => {
-    if (!isEditor) return alert("רק העורכת יכולה להוסיף");
-    const text = prompt(
-      type === "need" ? "הוסיפי צורך חדש" : "הוסיפי אילוץ חדש"
-    );
-    if (!text?.trim()) return;
-    const newItem = {
+  // === הוספה חדשה ע"י העורכת בלבד ===
+  const [addingType, setAddingType] = useState<"need" | "constraint" | null>(
+    null
+  );
+  const [newText, setNewText] = useState("");
+
+  const handleSaveNewItem = () => {
+    // ✅ הגנה נוספת – אם עדיין לא כולם הגיעו, לא עושים כלום
+    if (!allArrived || !isEditor) return;
+    if (!newText.trim() || !addingType) return;
+
+    const newItem: Item = {
       id: Date.now(),
-      text,
+      text: newText.trim(),
       sender: username,
       avatarUrl,
-      type,
+      type: addingType,
       values: {},
     };
+
     sendMessage(`[add-item] ${JSON.stringify(newItem)}`);
-    setItems((prev) => {
-      const updated = [...prev, newItem];
-      localStorage.setItem(`step2_top_${room}`, JSON.stringify(updated));
-      return updated;
-    });
+    setNewText("");
+    setAddingType(null);
   };
 
   // === מחיקת פריט (לעורכת בלבד) ===
   const handleDelete = (id: number) => {
-    if (!isEditor) return alert("רק העורכת יכולה למחוק פריטים");
-    if (!window.confirm("האם את בטוחה שברצונך למחוק את הפריט הזה?")) return;
-    sendMessage(`[remove-item] ${JSON.stringify(id)}`);
-    setItems((prev) => {
-      const updated = prev.filter((i) => i.id !== id);
-      localStorage.setItem(`step2_top_${room}`, JSON.stringify(updated));
-      return updated;
-    });
+    if (!isEditor || !allArrived) return; // ✅ גם כאן
+    setConfirmDelete(id);
   };
 
   // === סיום עריכה ===
   const handleFinishEditing = () => {
-    if (!isEditor) return;
+    if (!isEditor || !allArrived) return; // ✅ לא מסיימת לפני שכולן הגיעו
     sendMessage("[editing-done]");
-    setEditingDone(true);
-    localStorage.setItem(`editing_done_${room}`, "true");
     setShowPopup("✅ סיימת להוסיף! כל הבנות יכולות לעבור לשלב הבא 🎉");
   };
 
@@ -148,7 +193,6 @@ export default function Step2Page2() {
       alert("העורכת עדיין לא סיימה להוסיף. נא להמתין.");
       return;
     }
-    localStorage.setItem(`step2_final_${room}`, JSON.stringify(items));
     navigate("/step2Page3");
   };
 
@@ -168,24 +212,44 @@ export default function Step2Page2() {
         אלו 10 הצרכים והאילוצים שנבחרו ע״י הקבוצה
       </h1>
 
+      {/* ✅ הודעה קטנה לעורכת מי עדיין לא נכנסה לשלב */}
+      {isEditor && !allArrived && (
+        <p className="text-center text-sm text-[#1f1f75] mb-4">
+          מחכות עדיין ל: {missingUsers.join(", ")}
+          <br />
+          העריכה תיפתח כשתיכן תעברו לשלב זה 🙂
+        </p>
+      )}
+
       <div className="flex flex-row justify-center gap-10">
         <Column
           title="צרכים"
           color="blue"
           items={items.filter((i) => i.type === "need")}
-          onAdd={() => handleAdd("need")}
+          onAdd={() => setAddingType("need")}
           onDelete={handleDelete}
-          canAdd={isEditor && !editingDone}
-          canDelete={isEditor && !editingDone}
+          // ✅ עריכה מותרת רק אם: היא העורכת + כולן הגיעו + עוד לא סיימה
+          canAdd={isEditor && allArrived && !editingDone}
+          canDelete={isEditor && allArrived && !editingDone}
+          addingType={addingType}
+          newText={newText}
+          setNewText={setNewText}
+          handleSaveNewItem={handleSaveNewItem}
+          setAddingType={setAddingType}
         />
         <Column
           title="אילוצים"
           color="purple"
           items={items.filter((i) => i.type === "constraint")}
-          onAdd={() => handleAdd("constraint")}
+          onAdd={() => setAddingType("constraint")}
           onDelete={handleDelete}
-          canAdd={isEditor && !editingDone}
-          canDelete={isEditor && !editingDone}
+          canAdd={isEditor && allArrived && !editingDone}
+          canDelete={isEditor && allArrived && !editingDone}
+          addingType={addingType}
+          newText={newText}
+          setNewText={setNewText}
+          handleSaveNewItem={handleSaveNewItem}
+          setAddingType={setAddingType}
         />
       </div>
 
@@ -193,7 +257,12 @@ export default function Step2Page2() {
         {isEditor && !editingDone && (
           <button
             onClick={handleFinishEditing}
-            className="bg-[#3B2DBB] text-white px-8 py-3 rounded-full text-lg font-semibold hover:bg-[#2d2199] transition"
+            disabled={!allArrived} // ✅ נעול עד שכולן הגיעו
+            className={`px-8 py-3 rounded-full text-lg font-semibold transition ${
+              allArrived
+                ? "bg-[#3B2DBB] text-white hover:bg-[#2d2199]"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
           >
             סיימתי להוסיף 🚀
           </button>
@@ -213,15 +282,58 @@ export default function Step2Page2() {
 
         {!isEditor && (
           <p className="text-center text-[#1f1f75] mt-5">
-            בעריכה כעת ע״י: {editor}
+            בעריכה כעת ע״י: {editor || "—"}
           </p>
         )}
       </div>
+
+      {/* פופאפ אישור מחיקה */}
+      {confirmDelete && (
+        <div className="fixed top-0 left-0 w-full h-full flex justify-center items-center bg-black/40 z-50">
+          <div className="bg-white p-6 rounded-2xl shadow-lg text-center w-[320px]">
+            <p className="text-lg text-[#1f1f75] font-semibold mb-4">
+              למחוק את הפריט הזה?
+            </p>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => {
+                  sendMessage(
+                    `[remove-item] ${JSON.stringify(confirmDelete)}`
+                  );
+                  setConfirmDelete(null);
+                }}
+                className="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600"
+              >
+                כן, מחקי
+              </button>
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-300"
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function Column({ title, color, items, onAdd, onDelete, canAdd, canDelete }: any) {
+function Column({
+  title,
+  color,
+  items,
+  onAdd,
+  onDelete,
+  canAdd,
+  canDelete,
+  addingType,
+  newText,
+  setNewText,
+  handleSaveNewItem,
+  setAddingType,
+}: any) {
   const colors =
     color === "blue"
       ? { bg: "bg-[#E6F9FF]", border: "border-[#BEEAFF]" }
@@ -233,12 +345,11 @@ function Column({ title, color, items, onAdd, onDelete, canAdd, canDelete }: any
     >
       <h2 className="text-xl font-semibold text-[#1f1f75] mb-5">{title}</h2>
 
-      {items.map((i) => (
+      {items.map((i: Item) => (
         <div
           key={i.id}
           className="relative bg-white border border-[#DADADA] rounded-xl px-5 py-4 mb-3 w-full shadow-sm text-right"
         >
-          {/* תמונה + שם */}
           <div className="absolute top-2 right-3 flex items-center gap-2">
             <img
               src={i.avatarUrl || "/images/default-profile.png"}
@@ -252,10 +363,8 @@ function Column({ title, color, items, onAdd, onDelete, canAdd, canDelete }: any
             </span>
           </div>
 
-          {/* טקסט */}
           <p className="text-sm text-[#1f1f75] leading-snug mt-10">{i.text}</p>
 
-          {/* כפתור מחיקה לעורכת בלבד */}
           {canDelete && (
             <button
               onClick={() => onDelete(i.id)}
@@ -268,18 +377,50 @@ function Column({ title, color, items, onAdd, onDelete, canAdd, canDelete }: any
         </div>
       ))}
 
-      {/* כפתור הוספה */}
       {canAdd && (
-        <button
-          onClick={onAdd}
-          className={`mt-auto px-6 py-2 rounded-full font-semibold text-lg shadow-sm ${
-            color === "blue"
-              ? "bg-[#E6F9FF] border border-[#00bcd4] text-[#007b8e]"
-              : "bg-[#F5E6FF] border border-[#b47cff] text-[#7a3eff]"
-          }`}
-        >
-          {color === "blue" ? "הוספת צורך +" : "הוספת אילוץ +"}
-        </button>
+        <div className="mt-auto w-full">
+          {(addingType === "need" && title === "צרכים") ||
+          (addingType === "constraint" && title === "אילוצים") ? (
+            <div className="bg-white border border-[#DADADA] rounded-xl px-4 py-3 shadow-sm w-full flex flex-col gap-3">
+              <input
+                type="text"
+                placeholder={`הקלידי ${
+                  title === "צרכים" ? "צורך" : "אילוץ"
+                } חדש...`}
+                value={newText}
+                onChange={(e) => setNewText(e.target.value)}
+                className="border border-[#DADADA] rounded-lg px-3 py-2 w-full text-right outline-none focus:ring-2 focus:ring-[#9E77ED]"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={handleSaveNewItem}
+                  className="bg-[#1f1f75] text-white px-4 py-1 rounded-full text-sm hover:bg-[#15115f] transition"
+                >
+                  שמירה
+                </button>
+                <button
+                  onClick={() => setAddingType(null)}
+                  className="text-gray-600 text-sm hover:text-[#1f1f75]"
+                >
+                  ביטול
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() =>
+                setAddingType(title === "צרכים" ? "need" : "constraint")
+              }
+              className={`mt-auto px-6 py-2 rounded-full font-semibold text-lg shadow-sm border ${
+                color === "blue"
+                  ? "border-[#00bcd4] text-[#007b8e]"
+                  : "border-[#b47cff] text-[#7a3eff]"
+              } bg-white hover:bg-[#f8f8ff] transition w-full`}
+            >
+              {color === "blue" ? "הוספת צורך +" : "הוספת אילוץ +"}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
